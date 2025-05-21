@@ -33,11 +33,15 @@ open class UIPiPView: UIView,
                 sampleBufferDisplayLayer: pipBufferDisplayLayer,
                 playbackDelegate: self))
             controller.delegate = self
+            controller.setValue(1, forKey: "controlsStyle")
             return controller
         } else {
             return nil
         }
     }()
+    
+    public weak var delegate: AVPictureInPictureControllerDelegate?
+    public var onRefreshIntervalTimer: (() -> Void)?
 
     private var pipPossibleObservation: NSKeyValueObservation?
     private var frameSizeObservation: NSKeyValueObservation?
@@ -189,6 +193,7 @@ open class UIPiPView: UIView,
             timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.render()
+            self.onRefreshIntervalTimer?()
         }
         RunLoop.main.add(refreshIntervalTimer, forMode: .default)
     }
@@ -205,11 +210,13 @@ open class UIPiPView: UIView,
         _ pictureInPictureController: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
+        delegate?.pictureInPictureController?(pictureInPictureController, failedToStartPictureInPictureWithError: error)
     }
 
     open func pictureInPictureControllerWillStartPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
+        delegate?.pictureInPictureControllerWillStartPictureInPicture?(pictureInPictureController)
     }
 
     /// Always call the parent when overriding this function.
@@ -218,6 +225,15 @@ open class UIPiPView: UIView,
     ) {
         refreshIntervalTimer?.invalidate()
         refreshIntervalTimer = nil
+        delegate?.pictureInPictureControllerWillStopPictureInPicture?(pictureInPictureController)
+    }
+    
+    public func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        delegate?.pictureInPictureControllerDidStopPictureInPicture?(pictureInPictureController)
+    }
+    
+    public func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        delegate?.pictureInPictureControllerDidStartPictureInPicture?(pictureInPictureController)
     }
 
     // MARK: AVPictureInPictureSampleBufferPlaybackDelegate
